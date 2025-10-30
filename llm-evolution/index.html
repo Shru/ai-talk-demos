@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>LLM Evolution — Year-Anchored Interactive Network</title>
+<style>
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; }
+  #chart { width: 100vw; height: 100vh; }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-width: 360px;
+  }
+  .legend { position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,0.92); padding: 8px 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);}
+  .legend div { margin: 4px 0; font-size: 12px; }
+#chart-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-x: auto; overflow-y: hidden; }
+.sources-footer { position: fixed; left: 12px; bottom: 12px; background: rgba(255,255,255,0.95); padding: 6px 10px; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.sources-footer b { margin-right: 6px; } 
+</style>
+</head>
+<body>
+<div id="chart-container"><div id="chart"></div></div>
+<div class="legend" id="legend"></div>
+<div class="tooltip" id="tooltip" style="opacity:0"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const data = {"nodes": [{"id": 0, "name": "Shannon-style next-symbol prediction, n-gram LMs", "year": 1951, "venue": "Theory", "category": "Pre-Transformer Foundations", "what": "Formalized language modeling as probabilistic next-token prediction; count-based models with smoothing", "limits": "Data sparsity; short context; brittle generalization", "usecase": "Autocomplete, speech LM baselines", "paper": "Shannon (1951) + classic n-gram literature"}, {"id": 1, "name": "Neural Probabilistic Language Model (embeddings + feed-forward LM)", "year": 2003, "venue": "NeurIPS", "category": "Pre-Transformer Foundations", "what": "Jointly learned word vectors and LM; improved over n-grams", "limits": "Fixed window context; expensive at the time", "usecase": "Better LMs; foundation for embeddings", "paper": "Bengio et al., 2003"}, {"id": 2, "name": "Seq2Seq with LSTMs (encoder–decoder)", "year": 2014, "venue": "NIPS/NeurIPS era & ACL", "category": "Architecture/Core", "what": "End-to-end sequence transduction (MT, summarization)", "limits": "Fixed-vector bottleneck; long sequences hard", "usecase": "Machine translation, summarization", "paper": "Sutskever et al., 2014"}, {"id": 3, "name": "Additive/soft attention for NMT (Bahdanau attention)", "year": 2015, "venue": "ICLR", "category": "Architecture/Core", "what": "Learned alignments; removed encoder bottleneck", "limits": "Still recurrent; training latency/scaling limits", "usecase": "MT, any encoder–decoder with long inputs", "paper": "Bahdanau et al., 2015"}, {"id": 4, "name": "Sparsely-Gated Mixture-of-Experts (MoE)", "year": 2017, "venue": "ICLR", "category": "Scaling/MoE", "what": "Conditional computation enabling huge parameter counts with modest per-token FLOPs", "limits": "Routing instability; systems complexity", "usecase": "Efficient large-scale training", "paper": "Shazeer et al., 2017"}, {"id": 5, "name": "Transformer (self-attention)", "year": 2017, "venue": "NeurIPS", "category": "Architecture/Core", "what": "Fully parallel sequence modeling; strong long-range dependency capture; foundation of LLMs", "limits": "Quadratic attention cost; position handling required", "usecase": "Backbone for modern LLMs & multimodal models", "paper": "Vaswani et al., 2017"}, {"id": 6, "name": "BERT (masked LM, bidirectional encoder)", "year": 2018, "venue": "NAACL/ArXiv", "category": "Pretraining/LLMs", "what": "Strong language understanding across tasks with simple heads", "limits": "Not a generator for free-form text", "usecase": "Classification, QA, NLU", "paper": "Devlin et al., 2018"}, {"id": 7, "name": "GPT (decoder-only generative pretraining)", "year": 2018, "venue": "OpenAI (arXiv)", "category": "Pretraining/LLMs", "what": "Showed pretrain-then-prompt transfer; few/zero-shot begins to emerge", "limits": "Alignment/safety not addressed; moderate size", "usecase": "General NLP via prompting/fine-tuning", "paper": "Radford et al., 2018"}, {"id": 8, "name": "Adapters", "year": 2019, "venue": "ICLR", "category": "PEFT (Efficient Finetuning)", "what": "Insert small bottleneck layers; finetune a tiny fraction of parameters", "limits": "Per-task adapters; small capacity per module", "usecase": "Multi-task/domain adaptation at low cost", "paper": "Houlsby et al., 2019"}, {"id": 9, "name": "GPT-2 (1.5B)", "year": 2019, "venue": "OpenAI (arXiv)", "category": "Pretraining/LLMs", "what": "Coherent long-form generation; zero-shot multitask behaviors", "limits": "Hallucinations; safety; frozen knowledge", "usecase": "Open-ended generation by prompting", "paper": "Radford et al., 2019"}, {"id": 10, "name": "Transformer-XL (recurrence over segments)", "year": 2019, "venue": "ACL", "category": "Architecture/Core", "what": "Longer effective context with segment-level recurrence", "limits": "Complexity; memory trade-offs", "usecase": "Language modeling with long-term dependencies", "paper": "Dai et al., 2019"}, {"id": 11, "name": "GPT-3 (175B, in-context learning)", "year": 2020, "venue": "OpenAI (arXiv)", "category": "Pretraining/LLMs", "what": "Strong few/zero-shot performance; emergent abilities", "limits": "Cost; safety/faithfulness issues", "usecase": "General-purpose prompting across tasks", "paper": "Brown et al., 2020"}, {"id": 12, "name": "Linformer / BigBird (low-rank & sparse attention)", "year": 2020, "venue": "NeurIPS", "category": "Architecture/Core", "what": "Linear-time attention via low-rank or block-sparse patterns", "limits": "May miss some global deps; pattern choice matters", "usecase": "Long docs, retrieval-heavy tasks", "paper": "Wang et al., 2020; Zaheer et al., 2020"}, {"id": 13, "name": "Longformer (dilated sliding-window + global tokens)", "year": 2020, "venue": "ACL", "category": "Long-Context/Efficient Attention", "what": "Efficient thousand-token contexts", "limits": "Pattern design per task; possible information loss", "usecase": "Summarization, QA over long docs", "paper": "Beltagy et al., 2020"}, {"id": 14, "name": "RAG (Retrieval-Augmented Generation)", "year": 2020, "venue": "NeurIPS", "category": "Retrieval-Augmented", "what": "Combines LM with retriever for factual, up-to-date answers and citations", "limits": "Retriever quality; latency; system complexity", "usecase": "QA, enterprise assistants, grounded generation", "paper": "Lewis et al., 2020"}, {"id": 15, "name": "Reformer (LSH attention + reversible layers)", "year": 2020, "venue": "ICLR", "category": "Architecture/Core", "what": "Sub-quadratic attention + memory savings", "limits": "Approximation quality; tuning difficulty", "usecase": "Long sequences under tight memory", "paper": "Kitaev et al., 2020"}, {"id": 16, "name": "Scaling laws for neural LMs", "year": 2020, "venue": "OpenAI (arXiv)", "category": "Other", "what": "Power-law relations guiding optimal allocation of model/data/compute", "limits": "Abstracts away data quality, alignment", "usecase": "Planning large-scale training", "paper": "Kaplan et al., 2020"}, {"id": 17, "name": "CLIP (contrastive vision–language pretraining)", "year": 2021, "venue": "ArXiv", "category": "Multimodality", "what": "Connects text and vision via contrastive learning enabling zero-shot image recognition", "limits": "Prompt sensitivity; dataset bias", "usecase": "Zero-shot classification, retrieval; multimodal LLMs", "paper": "Radford et al., 2021"}, {"id": 18, "name": "GPT-Neo / GPT-J", "year": 2021, "venue": "EleutherAI (ArXiv)", "category": "Pretraining/LLMs", "what": "Open large decoders competitive with GPT-3-class on some tasks", "limits": "Smaller than GPT-3; data differences", "usecase": "Open research & downstream finetuning", "paper": "Black et al., 2021; Wang & Komatsuzaki, 2021"}, {"id": 19, "name": "Prefix-Tuning / Prompt-Tuning", "year": 2021, "venue": "ACL", "category": "PEFT (Efficient Finetuning)", "what": "Learn soft prompts/prefixes to steer frozen LMs", "limits": "Capacity limits; prompt instability on hard tasks", "usecase": "Lightweight adaptation, controllable generation", "paper": "Li & Liang, 2021; Lester et al., 2021"}, {"id": 20, "name": "RoPE (rotary position embeddings)", "year": 2021, "venue": "ICLR/ArXiv", "category": "Architecture/Core", "what": "Relative-like positional encoding aiding long-context stability/extrapolation", "limits": "Still bounded by attention limits; needs scaling tricks", "usecase": "Modern GPT-style position scheme", "paper": "Su et al., 2021 (RoFormer)"}, {"id": 21, "name": "Switch Transformer (practical MoE)", "year": 2021, "venue": "JMLR/ArXiv", "category": "Architecture/Core", "what": "Simplified routing; scaled to ~trillion-parameter sparse models", "limits": "Engineering overhead; token routing pathologies", "usecase": "Cost-efficient pretraining at scale", "paper": "Fedus et al., 2021"}, {"id": 22, "name": "BLOOM (176B multilingual)", "year": 2022, "venue": "BigScience (ArXiv)", "category": "Pretraining/LLMs", "what": "Open 176B model; multilingual training at scale", "limits": "Infrastructure heavy; inference cost", "usecase": "Open multilingual research & apps", "paper": "Scao et al., 2022"}, {"id": 23, "name": "Chain-of-Thought prompting", "year": 2022, "venue": "NeurIPS", "category": "Alignment & Reasoning", "what": "Prompts elicit intermediate reasoning steps; big gains on reasoning benchmarks", "limits": "Verbosity; potential confabulations; not universally effective", "usecase": "Math/logic reasoning, planning", "paper": "Wei et al., 2022"}, {"id": 24, "name": "Flamingo (few-shot VLM)", "year": 2022, "venue": "ArXiv", "category": "Multimodality", "what": "Large multimodal model with interleaved image–text processing for few-shot tasks", "limits": "Training complexity; data mixture specifics", "usecase": "VQA, captioning, image-grounded dialogue", "paper": "Alayrac et al., 2022"}, {"id": 25, "name": "FlashAttention (IO-aware exact attention)", "year": 2022, "venue": "NeurIPS", "category": "Architecture/Core", "what": "Big speed/memory gains; enabled very long context windows", "limits": "Kernel-specific; quadratic in theory remains", "usecase": "Faster training/inference; long-context LLMs", "paper": "Dao et al., 2022"}, {"id": 26, "name": "InstructGPT (SFT + RLHF with PPO)", "year": 2022, "venue": "OpenAI (arXiv)", "category": "Pretraining/LLMs", "what": "Human-aligned behavior; improved helpfulness/harmlessness", "limits": "Costly human data; reward hacking; stability", "usecase": "Helpful assistants; instruction following", "paper": "Ouyang et al., 2022"}, {"id": 27, "name": "LoRA (Low-Rank Adaptation)", "year": 2022, "venue": "ArXiv", "category": "PEFT (Efficient Finetuning)", "what": "Low-rank updates for attention/FFN weights; strong quality with tiny trainable params", "limits": "Choosing ranks/targets; compounding with other PEFT methods", "usecase": "Cost-effective finetuning; on-device adaptation", "paper": "Hu et al., 2022"}, {"id": 28, "name": "RETRO (retrieval-augmented LM)", "year": 2022, "venue": "ICLR", "category": "Retrieval-Augmented", "what": "kNN-style chunk retrieval during training/inference; reduces parameter needs", "limits": "Large index management; latency", "usecase": "Knowledge-heavy generation with provenance", "paper": "Borgeaud et al., 2022"}, {"id": 29, "name": "DPO (Direct Preference Optimization)", "year": 2023, "venue": "ArXiv", "category": "Alignment & Reasoning", "what": "Preference learning without explicit RL; simpler objective than PPO-based RLHF", "limits": "Requires preference data; tradeoffs vs RLHF vary", "usecase": "Simpler alignment finetuning", "paper": "Rafailov et al., 2023"}, {"id": 30, "name": "LLaMA (7–65B)", "year": 2023, "venue": "Meta (ArXiv)", "category": "Pretraining/LLMs", "what": "High-quality open-weight family enabling strong community finetunes", "limits": "Use-license restrictions initially; mid-size only", "usecase": "Research, instruction-tuning, PEFT", "paper": "Touvron et al., 2023"}, {"id": 31, "name": "Mistral 7B / Mixtral MoE", "year": 2023, "venue": "Mistral (ArXiv)", "category": "Scaling/MoE", "what": "Efficient small models; MoE competitive with larger dense models", "limits": "Sparse routing complexity; context size evolution", "usecase": "Edge/server-efficient LLMs", "paper": "Mistral AI, 2023–2024"}, {"id": 32, "name": "ReAct (reason + act with tools)", "year": 2023, "venue": "ICLR", "category": "Alignment & Reasoning", "what": "Interleaves reasoning traces with tool calls to reduce hallucinations and improve success", "limits": "More complex prompting; orchestration overhead", "usecase": "Tool-augmented agents, web QA", "paper": "Yao et al., 2023"}, {"id": 33, "name": "LLaMA 3 family", "year": 2024, "venue": "Meta (ArXiv)", "category": "Pretraining/LLMs", "what": "Improved open-weight quality; long context variants; instruction-following", "limits": "Closed eval details; still evolving", "usecase": "Open ecosystem apps, research", "paper": "Meta AI, 2024"}, {"id": 34, "name": "Auto-Encoding Variational Bayes (VAE foundations)", "year": 2013, "venue": "ICLR/ArXiv", "category": "Generative Families", "what": "Introduces reparameterization trick; deep latent-variable generator (encode→latent distribution→decode)", "limits": "Samples often slightly blurry; KL/likelihood trade-offs", "usecase": "Latent representations; generative modeling; semi-supervised backbones", "paper": "Kingma & Welling, 2013–2014"}, {"id": 35, "name": "Generative Adversarial Nets (GANs)", "year": 2014, "venue": "NeurIPS", "category": "Generative Families", "what": "Adversarial training: generator vs discriminator; sharp realistic samples", "limits": "Unstable training; mode collapse; sensitivity to hyperparameters", "usecase": "High-fidelity image synthesis; style transfer; super-resolution", "paper": "Goodfellow et al., 2014"}, {"id": 36, "name": "Semi-Supervised Deep Generative Models (proto-VAE usage)", "year": 2014, "venue": "NeurIPS", "category": "Generative Families", "what": "Early VAEs used for semi-supervised learning (few labels + lots of unlabeled)", "limits": "Quality below GANs at the time; limited resolution", "usecase": "Controllable generation via labeled latent regions; classification with few labels", "paper": "Kingma et al., 2014; Maaløe et al., 2016"}, {"id": 37, "name": "PixelRNN / PixelCNN (autoregressive images)", "year": 2016, "venue": "ICML/NeurIPS", "category": "Generative Families", "what": "Predict next pixel conditioned on previous ones (tractable likelihood)", "limits": "Slow sampling (sequential); struggles with global structure at high res", "usecase": "High-fidelity likelihood-trained image models; density estimation", "paper": "van den Oord et al., 2016"}, {"id": 38, "name": "Glow (normalizing flows)", "year": 2018, "venue": "NeurIPS", "category": "Generative Families", "what": "Invertible 1×1 convs; exact log-likelihood; efficient synthesis", "limits": "Invertibility constraints; heavy memory/compute; sometimes less realistic", "usecase": "Exact-likelihood generative modeling; interpretable latents", "paper": "Kingma & Dhariwal, 2018"}, {"id": 39, "name": "Modern Energy-Based Models", "year": 2019, "venue": "NeurIPS/ICLR", "category": "Generative Families", "what": "Learn energy landscape where real data has low energy; sample with MCMC", "limits": "Training/sampling tricky; computationally intensive", "usecase": "Compositional priors; flexible density modeling", "paper": "Du & Mordatch, 2019; Grathwohl et al., 2020"}, {"id": 40, "name": "Score-based Generative Modeling / NCSN", "year": 2019, "venue": "NeurIPS/ICLR", "category": "Generative Families", "what": "Learn score ∇log p(x) across noise levels; sample via Langevin/SDEs", "limits": "Initially slow and low-res; careful noise schedules needed", "usecase": "High-quality synthesis without adversarial games", "paper": "Song & Ermon, 2019–2020"}, {"id": 41, "name": "DDPM (Denoising Diffusion Probabilistic Models)", "year": 2020, "venue": "NeurIPS", "category": "Generative Families", "what": "Forward noising + learned denoiser to reverse; stable high-quality generation", "limits": "Sampling speed (many steps) though later accelerated", "usecase": "Class-conditional/controlled generation; robust training", "paper": "Ho, Jain & Abbeel, 2020"}, {"id": 42, "name": "NVAE (Hierarchical VAE)", "year": 2020, "venue": "NeurIPS", "category": "Generative Families", "what": "Deep hierarchical VAE that narrows quality gap vs GANs/flows", "limits": "Complex training; still lagged top diffusion later", "usecase": "High-resolution VAE image generation; strong latent structure", "paper": "Vahdat & Kautz, 2020"}, {"id": 43, "name": "Latent Diffusion Models (Stable Diffusion)", "year": 2022, "venue": "CVPR/ArXiv", "category": "Generative Families", "what": "Run diffusion in VAE latent space → big speed/compute wins; text-guided", "limits": "Relies on VAE quality; prompt sensitivity; safety considerations", "usecase": "Stable Diffusion; fast high-res image synthesis & editing", "paper": "Rombach et al., 2022"}], "links": [{"source": 0, "target": 1, "type": "chronology"}, {"source": 1, "target": 2, "type": "chronology"}, {"source": 2, "target": 3, "type": "chronology"}, {"source": 3, "target": 4, "type": "chronology"}, {"source": 4, "target": 5, "type": "chronology"}, {"source": 5, "target": 6, "type": "chronology"}, {"source": 6, "target": 7, "type": "chronology"}, {"source": 7, "target": 8, "type": "chronology"}, {"source": 8, "target": 9, "type": "chronology"}, {"source": 9, "target": 10, "type": "chronology"}, {"source": 10, "target": 15, "type": "chronology"}, {"source": 15, "target": 14, "type": "chronology"}, {"source": 14, "target": 16, "type": "chronology"}, {"source": 16, "target": 12, "type": "chronology"}, {"source": 12, "target": 11, "type": "chronology"}, {"source": 11, "target": 13, "type": "chronology"}, {"source": 13, "target": 17, "type": "chronology"}, {"source": 17, "target": 18, "type": "chronology"}, {"source": 18, "target": 19, "type": "chronology"}, {"source": 19, "target": 20, "type": "chronology"}, {"source": 20, "target": 21, "type": "chronology"}, {"source": 21, "target": 28, "type": "chronology"}, {"source": 28, "target": 27, "type": "chronology"}, {"source": 27, "target": 26, "type": "chronology"}, {"source": 26, "target": 23, "type": "chronology"}, {"source": 23, "target": 24, "type": "chronology"}, {"source": 24, "target": 22, "type": "chronology"}, {"source": 22, "target": 25, "type": "chronology"}, {"source": 25, "target": 32, "type": "chronology"}, {"source": 32, "target": 29, "type": "chronology"}, {"source": 29, "target": 30, "type": "chronology"}, {"source": 30, "target": 31, "type": "chronology"}, {"source": 31, "target": 33, "type": "chronology"}, {"source": 23, "target": 29, "type": "Alignment & Reasoning"}, {"source": 29, "target": 32, "type": "Alignment & Reasoning"}, {"source": 2, "target": 3, "type": "Architecture/Core"}, {"source": 3, "target": 5, "type": "Architecture/Core"}, {"source": 5, "target": 10, "type": "Architecture/Core"}, {"source": 10, "target": 12, "type": "Architecture/Core"}, {"source": 12, "target": 15, "type": "Architecture/Core"}, {"source": 15, "target": 20, "type": "Architecture/Core"}, {"source": 20, "target": 21, "type": "Architecture/Core"}, {"source": 21, "target": 25, "type": "Architecture/Core"}, {"source": 17, "target": 24, "type": "Multimodality"}, {"source": 8, "target": 19, "type": "PEFT (Efficient Finetuning)"}, {"source": 19, "target": 27, "type": "PEFT (Efficient Finetuning)"}, {"source": 0, "target": 1, "type": "Pre-Transformer Foundations"}, {"source": 6, "target": 7, "type": "Pretraining/LLMs"}, {"source": 7, "target": 9, "type": "Pretraining/LLMs"}, {"source": 9, "target": 11, "type": "Pretraining/LLMs"}, {"source": 11, "target": 18, "type": "Pretraining/LLMs"}, {"source": 18, "target": 22, "type": "Pretraining/LLMs"}, {"source": 22, "target": 26, "type": "Pretraining/LLMs"}, {"source": 26, "target": 30, "type": "Pretraining/LLMs"}, {"source": 30, "target": 33, "type": "Pretraining/LLMs"}, {"source": 14, "target": 28, "type": "Retrieval-Augmented"}, {"source": 4, "target": 31, "type": "Scaling/MoE"}, {"source": 34, "target": 36, "type": "chronology"}, {"source": 36, "target": 42, "type": "chronology"}, {"source": 40, "target": 41, "type": "chronology"}, {"source": 41, "target": 43, "type": "chronology"}, {"source": 41, "target": 40, "type": "Generative Families"}, {"source": 43, "target": 41, "type": "Generative Families"}, {"source": 35, "target": 38, "type": "Generative Families"}, {"source": 34, "target": 36, "type": "Generative Families"}, {"source": 37, "target": 40, "type": "Generative Families"}, {"source": 38, "target": 40, "type": "Generative Families"}, {"source": 39, "target": 40, "type": "Generative Families"}, {"source": 34, "target": 43, "type": "Generative Families"}, {"source": 17, "target": 43, "type": "bridge: text–image (CLIP→LDM)"}, {"source": 37, "target": 9, "type": "bridge: autoregression principle"}, {"source": 5, "target": 41, "type": "bridge: transformer backbones in diffusion (DiT/cross-attention)"}, {"source": 34, "target": 43, "type": "bridge: VAE latent backbone"}]};
+
+const width = window.innerWidth, height = window.innerHeight;
+const marginTop = 40;
+
+// Years and xScale as lanes
+const years = Array.from(new Set(data.nodes.map(d => d.year))).sort((a,b)=>a-b);
+const xScale = d3.scaleBand().domain(years).range([80, width-40]).paddingInner(0.2);
+const laneWidth = Math.max(40, xScale.bandwidth());
+
+const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
+// Compute dynamic width from year range to allow horizontal scrolling
+const allYears = data.nodes.map(n => n.year).filter(y => Number.isFinite(y));
+const minYear = d3.min(allYears), maxYear = d3.max(allYears);
+const yearSpan = Math.max(1, (maxYear - minYear));
+const pxPerYear = 220; // generous spacing
+const desiredWidth = Math.max(window.innerWidth, Math.min(2500, Math.round(pxPerYear * yearSpan)));
+svg.attr("width", desiredWidth);
+
+// Render sources footer from unique venues
+const venues = Array.from(new Set(data.nodes
+  .map(n => (n.venue || ""))
+  .flatMap(v => v.split(/[\s]*\/[\s]*|,|\+|\|/).map(s => s.trim()))
+  .filter(v => v && v.toLowerCase() !== "unknown"))).sort();
+
+const footer = d3.select("body").append("div").attr("class", "sources-footer");
+footer.html(`<b>Sources:</b> ${["NeurIPS"].concat(venues.filter(v => v !== "NeurIPS")).join(", ")}`);
+
+const g = svg.append("g").attr("transform", "translate(0," + marginTop + ")");
+
+// Year guide lines
+g.append("g").selectAll("line").data(years).join("line")
+  .attr("x1", d => xScale(d) + laneWidth/2)
+  .attr("x2", d => xScale(d) + laneWidth/2)
+  .attr("y1", 0).attr("y2", height)
+  .attr("stroke","#e7e7e7").attr("stroke-width",1.2);
+
+// Year labels
+svg.append("g").attr("transform","translate(0,20)")
+  .selectAll("text").data(years).join("text")
+  .attr("x", d => xScale(d) + laneWidth/2).attr("y", 0)
+  .attr("text-anchor","middle").attr("font-size", 12).attr("fill","#555")
+  .text(d => d);
+
+// Category colors
+const categories = Array.from(new Set(data.nodes.map(d => d.category)));
+const color = d3.scaleOrdinal().domain(categories)
+  .range(d3.schemeTableau10.concat(d3.schemeSet3).slice(0, categories.length));
+
+// Links
+const link = g.append("g").attr("stroke", "#969696").attr("stroke-opacity", 0.5)
+  .selectAll("line").data(data.links).join("line")
+  .attr("stroke-width", d => d.type && d.type.startsWith("bridge:") ? 2 : (d.type === "chronology" ? 2 : 1))
+  .attr("stroke", d => d.type && d.type.startsWith("bridge:") ? "#a855f7" : "#999")
+  .attr("stroke-dasharray", d => d.type === "chronology" ? "0" : (d.type && d.type.startsWith("bridge:") ? "5,3" : "4,2"));
+
+// Nodes
+const node = g.append("g").attr("stroke", "#fff").attr("stroke-width", 1.0)
+  .selectAll("circle").data(data.nodes).join("circle")
+  .attr("r", d => 5 + Math.max(0,(d.year-2000))*0.15)
+  .attr("fill", d => (d.category === "Generative Families" ? "#e63973" : (d.category === "Scaling/MoE" ? "#000000" : color(d.category))))
+  .call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended));
+
+const labels = g.append("g").selectAll("text").data(data.nodes).join("text")
+  .text(d => d.name)
+  .attr("font-size", 11).attr("dx", 8).attr("dy", "0.35em").attr("fill", "#333");
+
+const tooltip = d3.select("#tooltip");
+node.on("mouseover", (event, d) => {
+  tooltip.transition().duration(120).style("opacity", 1);
+  tooltip.html(`
+    <div><strong>${d.year} — ${d.name}</strong></div>
+    <div><em>Venue:</em> ${d.venue} | <em>Category:</em> ${d.category}</div>
+    <div style="margin-top:6px"><em>What it achieved</em>: ${d.what}</div>
+    <div><em>Limitations</em>: ${d.limits}</div>
+    <div><em>Use case</em>: ${d.usecase}</div>
+    <div style="margin-top:6px"><em>Key Paper/Release</em>: ${d.paper}</div>
+  `);
+}).on("mousemove", (event) => {
+  tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+}).on("mouseout", () => tooltip.transition().duration(200).style("opacity", 0));
+
+// Force layout with year-anchored x
+const forceX = d3.forceX(d => xScale(d.year) + laneWidth/2).strength(0.7);
+const forceY = d3.forceY(height/2).strength(0.03);
+
+const simulation = d3.forceSimulation(data.nodes)
+  .force("link", d3.forceLink(data.links).id(d => d.id).distance(d => d.type === "chronology" ? 100 : 45).strength(d => d.type === "chronology" ? 0.6 : 0.05))
+  .force("charge", d3.forceManyBody().strength(-140))
+  .force("collision", d3.forceCollide().radius(18))
+  .force("x", forceX)
+  .force("y", forceY);
+
+// Clamp X within its year band
+function clampToLane(x, year) {
+  const left = xScale(year);
+  const right = xScale(year) + laneWidth;
+  return Math.max(left + 6, Math.min(right - 6, x));
+}
+
+simulation.on("tick", () => {
+  data.nodes.forEach(d => { d.x = clampToLane(d.x || (xScale(d.year)+laneWidth/2), d.year); });
+
+  link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+
+  node.attr("cx", d => d.x).attr("cy", d => d.y);
+  labels.attr("x", d => d.x).attr("y", d => d.y);
+});
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x; d.fy = d.y;
+}
+function dragged(event, d) {
+  d.fx = clampToLane(event.x, d.year);
+  d.fy = event.y;
+}
+function dragended(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null; d.fy = null;
+}
+
+
+// Legend
+const legend = d3.select("#legend");
+// Keep original category order; apply explicit swatch overrides
+const cats = categories.slice();
+cats.forEach((c) => {
+  const row = legend.append("div");
+  const swatchColor = (c === "Generative Families") ? "#e63973" : (c === "Scaling/MoE" ? "#000000" : color(c));
+  row.html(`<span style="display:inline-block;width:12px;height:12px;background:${swatchColor};border-radius:3px;margin-right:6px;"></span>${c}`);
+});
+// Bridge legend entry
+const bridgeRow = legend.append("div");
+bridgeRow.html(`<span style="display:inline-block;width:16px;height:0;border-top:2px dashed #a855f7;margin-right:6px;transform: translateY(-2px);"></span>Bridge links (cross-modality / cross-principle)`);
+// Add gray links legend
+const graySolid = legend.append("div");
+graySolid.html(`<span style="display:inline-block;width:24px;height:0;border-top:2px solid #999;margin-right:6px;transform: translateY(-2px);"></span>Chronological chain`);
+const grayDashed = legend.append("div");
+grayDashed.html(`<span style="display:inline-block;width:24px;height:0;border-top:2px dashed #999;margin-right:6px;transform: translateY(-2px);"></span>Same-category links`);
+
+window.addEventListener("resize", () => {/* keep state; no reload for scroll */});
+</script>
+</body>
+</html>

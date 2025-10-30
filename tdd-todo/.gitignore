@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Test outputs
+coverage/
+playwright-report/
+test-results/
+
+# Environment
+.env
+.env.local
+
+# Data files
+*.json
+!package.json
+!tsconfig.json
+!jest.config.js
+!playwright.config.ts
+!vite.config.ts
+!tsconfig.node.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

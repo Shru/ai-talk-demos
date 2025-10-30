@@ -1,0 +1,14 @@
+{
+  "name": "llm-evolution-network",
+  "version": "1.0.0",
+  "description": "Interactive network visualization of LLM evolution from 1951-2024",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "keywords": ["llm", "ai", "visualization", "d3", "network", "timeline"],
+  "author": "",
+  "license": "MIT"
+}
+

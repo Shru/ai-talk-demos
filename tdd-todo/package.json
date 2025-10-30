@@ -1,0 +1,20 @@
+{
+  "name": "tdd-todo-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces",
+    "test:backend": "npm run test -w @tdd-todo/backend",
+    "test:frontend": "npm run test -w @tdd-todo/frontend",
+    "dev:backend": "npm run dev -w @tdd-todo/backend",
+    "dev:frontend": "npm run dev -w @tdd-todo/frontend",
+    "build": "npm run build --workspaces",
+    "start:backend": "npm run start -w @tdd-todo/backend"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

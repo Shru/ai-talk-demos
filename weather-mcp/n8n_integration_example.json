@@ -1,0 +1,41 @@
+{
+  "name": "Weather MCP Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/mcp",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream"
+          }
+        },
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "jsonrpc",
+              "value": "2.0"
+            },
+            {
+              "name": "id",
+              "value": "1"
+            },
+            {
+              "name": "method",
+              "value": "tools/call"
+            },
+            {
+              "name": "params",
+              "value": "={{{\n  \"name\": \"get_weather\",\n  \"arguments\": {\n    \"city\": \"{{ $json.city }}\"\n  }\n}}}"
+            }
+          ]
+        }
+      },
+      "name": "Weather MCP Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [240, 300]
+    }
+  ],
+  "connections": {}
+}
